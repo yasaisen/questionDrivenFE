@@ -1,8 +1,11 @@
 """
- Copyright (c) 2025, yasaisen(clover).
- All rights reserved.
-
- last modified in 2505152308
+ SPDX-License-Identifier: MIT
+ Copyright (c) 2025, yasaisen (clover)
+ 
+ This file is part of a project licensed under the MIT License.
+ See the LICENSE file in the project root for more information.
+ 
+ last modified in 2506060435
 """
 
 import json
@@ -15,11 +18,39 @@ import argparse
 import yaml
 from pprint import pprint
 import matplotlib.pyplot as plt
+import inspect
 import os
 
+        
+def log_print(
+    text: str = '', 
+    head: bool = False,
+    newline: bool = True,
+    traceback: bool = False,
+):
+    frame = inspect.currentframe().f_back
+    func_name = frame.f_code.co_name
+    nowtime = datetime.now().strftime('%H:%M:%S')
 
-def log_print(state_name, text):
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] [{state_name}] {text}")
+    cls_name = None
+    if 'self' in frame.f_locals:
+        cls_name = frame.f_locals['self'].__class__.__name__
+    elif 'cls' in frame.f_locals:
+        cls_name = frame.f_locals['cls'].__name__
+
+    if head:
+        print()
+    if cls_name:
+        print(f"[{nowtime}] [{cls_name}.{func_name}] {text}", end='')
+    else:
+        print(f"[{nowtime}] [{func_name}] {text}", end='')
+    if newline:
+        print()
+    if traceback:
+        for line in inspect.stack():
+            if line.function == func_name:
+                continue
+            print(f"  -> {line.filename}:{line.lineno} in {line.function} on line {line.lineno}")
 
 def checkpath(path):
     if not os.path.exists(path):
@@ -27,49 +58,125 @@ def checkpath(path):
 
 class ConfigHandler:
     def __init__(self, 
-        cfg,
+        cfg, 
+        best_metrics_list: List[Dict], 
         default_save_filename: str = 'best_model',
     ):
-        self.state_name = 'ConfigHandler'
-        print()
-        log_print(self.state_name, f"Building...")
+        log_print(f"Building...", head=True)
 
         self.cfg = cfg
         self.default_save_filename = default_save_filename
 
-        if cfg['task'].get("root_path") == "":
+        if cfg['env'].get("root_path") == "":
             pwd = os.getcwd()
-            cfg['task']['root_path'] = pwd
-            log_print(self.state_name, f"Automatically set path on {pwd}")
+            cfg['env']['root_path'] = pwd
+            log_print(f"Automatically set path on {pwd}")
+        if cfg['env'].get("output_path") == "":
+            cfg['env']['output_path'] = "output"
+            log_print(f"Automatically set output path to 'output'")
 
-        log_print(self.state_name, f"Loaded config:")
+
+        log_print(f"Loaded config:")
         pprint(self.cfg)
 
+
         self.nowtime = datetime.now().strftime("%y%m%d%H%M")
-        self.save_path = os.path.join(self.cfg['task'].get("root_path"), self.cfg['task'].get("output_path"), self.nowtime)
+        self.save_path = os.path.join(self.cfg['env'].get("root_path"), self.cfg['env'].get("output_path"), self.nowtime)
         checkpath(self.save_path)
+
 
         self.log_save_path = os.path.join(self.save_path, self.nowtime + '_result.log')
         with open(self.log_save_path, "w") as file:
             # file.write(self.cfg + "\n")
             yaml.safe_dump(self.cfg, file, default_flow_style=False)
+            file.write(f"\n===FOLLOWING_IS_RESULTS===\n[\n")
 
-        log_print(self.state_name, f"Saved config to {self.log_save_path}")
-        log_print(self.state_name, f"...Done\n")
+        self.update_temp_list = []
+        self.best_metrics_list = best_metrics_list
+
+        log_print(f"Saved config to {self.log_save_path}")
+        log_print(f"...Done\n")
 
     def save_result(self, 
         result: Dict,
+        update: bool = False,
         print_log: bool = False,
     ):
+        def _apply(x):
+            if torch.is_tensor(x):
+                return x.item()
+            elif isinstance(x, dict):
+                return {key: _apply(value) for key, value in x.items()}
+            elif isinstance(x, list):
+                return [_apply(x) for x in x]
+            else:
+                return x
+        result = _apply(result)
+
+        if update:
+            self.update_temp_list.append(result)
+
         with open(self.log_save_path, "a") as f:
-            f.write(f"{result}\n")
+            f.write(f"{str(result)}, \n")
 
         if print_log:
-            log_print(self.state_name, f"Saved result to {self.log_save_path}")
+            log_print(f"Saved result to {self.log_save_path}")
+
+    def get_update_avg(self, 
+        print_log: bool = False,
+    ):
+        if len(self.update_temp_list) == 0:
+            return None
+        
+        data_temp_dict = {}
+        keys = []
+        for key, value in self.update_temp_list[0].items():
+            if isinstance(value, (int, float)):
+                keys.append(key)
+
+        data_temp_dict = {key: 0 for key in keys}
+        for key in keys:
+            for d in self.update_temp_list:
+                data_temp_dict[key] += d.get(key, 0)
+            data_temp_dict[key] /= len(self.update_temp_list)
+
+        if print_log:
+            log_print(f"Average {data_temp_dict}")
+
+        self.update_temp_list = []
+        return data_temp_dict
+
+    def best_metrics_cond(self,
+        metrics_dict: Dict, 
+        weight_dict: Dict,
+    ):
+        for idx in range(len(self.best_metrics_list)):
+            if self.best_metrics_list[idx]['cond'] == 'cur>best':
+                if metrics_dict[self.best_metrics_list[idx]['key']] >= self.best_metrics_list[idx]['best']:
+                    self.best_metrics_list[idx]['best'] = metrics_dict[self.best_metrics_list[idx]['key']]
+                    weight_dict['metric_key'] = self.best_metrics_list[idx]['key']
+                    weight_dict['metric_value'] = self.best_metrics_list[idx]['best']
+                    self.save_weight(
+                        weight_dict=weight_dict, 
+                        save_filename=f"{self.best_metrics_list[idx]['key']}_best_model",
+                        print_log=True,
+                    )
+
+            elif self.best_metrics_list[idx]['cond'] == 'cur<best':
+                if metrics_dict[self.best_metrics_list[idx]['key']] <= self.best_metrics_list[idx]['best']:
+                    self.best_metrics_list[idx]['best'] = metrics_dict[self.best_metrics_list[idx]['key']]
+                    weight_dict['metric_key'] = self.best_metrics_list[idx]['key']
+                    weight_dict['metric_value'] = self.best_metrics_list[idx]['best']
+                    self.save_weight(
+                        weight_dict=weight_dict, 
+                        save_filename=f"{self.best_metrics_list[idx]['key']}_best_model",
+                        print_log=True,
+                    )
 
     def save_weight(self, 
         weight_dict: Dict, 
-        save_filename: str = None,
+        save_filename: str = None, 
+        print_log: bool = False,
     ):
         if save_filename is None:
             save_filename = self.default_save_filename
@@ -79,11 +186,17 @@ class ConfigHandler:
             file_save_path
         )
 
-        log_print(self.state_name, f"Saved weight to {file_save_path}")
+        if print_log:
+            log_print(f"Saved weight to {file_save_path}")
+
+    def close_result(self, 
+        ):
+        with open(self.log_save_path, "a") as f:
+            f.write("]\n")
 
     @classmethod
-    def get_cfg(
-        cls,
+    def get_cfg(cls,
+        best_metrics_list: List[Dict], 
     ):
         parser = argparse.ArgumentParser()
         parser.add_argument("--cfg-path", required=True)
@@ -93,17 +206,62 @@ class ConfigHandler:
             cfg = yaml.safe_load(file)
 
         cfg_handler = cls(
-            cfg=cfg,
+            cfg=cfg, 
+            best_metrics_list=best_metrics_list,
         )
         return cfg_handler
+
+def sample_device_adjust(
+    sample, 
+    cuda_enabled: bool = True
+):
+    if sample == None or len(sample) == 0:
+        sample = {}
+
+    if cuda_enabled:
+        def _apply(x):
+            if torch.is_tensor(x):
+                return x.cuda()
+            elif isinstance(x, dict):
+                return {key: _apply(value) for key, value in x.items()}
+            elif isinstance(x, list):
+                return [_apply(x) for x in x]
+            else:
+                return x
+        sample = _apply(sample)
+    
+    if not isinstance(sample, dict):
+        sample = {"is_empty":True}
+
+    return sample
+
+class Config:
+    def __init__(self, cfg):
+        for key, value in cfg.items():
+            setattr(self, key, value)
 
 def get_trainable_params(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-def load_data(file_path):
+def load_json_data(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
         return data
+    
+def save_list2json(self,
+    meta_list: List[Dict[str, str]], 
+    save_filename: str = 'meta_list', 
+):
+    def convert(obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        raise TypeError(f"Type {type(obj)} not serializable")
+
+    file_save_path = os.path.join(self.save_path, f'{self.nowtime}_{save_filename}.json')
+    with open(file_save_path, "w") as file:
+        json.dump(meta_list, file, indent=4, default=convert)
+
+    log_print(f"Saved list to {file_save_path}")
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -154,8 +312,7 @@ def calu_dict_avg(
 def load_result_logs(
     result_log_path: str,
 ) -> dict:
-    state_name = 'load_result_logs'
-    log_print(state_name, f"Loading from {result_log_path}.log")
+    log_print(f"Loading from {result_log_path}.log")
     data = []
     with open(result_log_path + ".log", "r", encoding="utf-8") as f:
         for line in f:
@@ -167,13 +324,13 @@ def load_result_logs(
                 except Exception as e:
                     d = eval(line)
                     data.append(d)
-    log_print(state_name, f"Number of data: {len(data)}")
+    log_print(f"Number of data: {len(data)}")
 
     unique_states = []
     for single_dict in data: 
         if single_dict.get('state') not in unique_states:
             unique_states.append(single_dict.get('state'))
-    log_print(state_name, f"Loaded states: {unique_states}")    
+    log_print(f"Loaded states: {unique_states}")    
 
     data_dict = {}
     for state in unique_states:
@@ -192,7 +349,7 @@ def load_result_logs(
         for key in data_dict[state]:
             print(f"----> [{key}]")
 
-    log_print(state_name, f"...Done\n")
+    log_print(f"...Done\n")
 
     return data_dict
 
@@ -248,9 +405,15 @@ def plot_data_list(
         plt.savefig(os.path.join(os.getcwd(), save + '.png'))
     plt.show()
 
+def outputClass2lossDict(
+    output
+):
+    loss_dict = {}
+    for k,v in output.items():
+        if "loss" in k:
+            loss_dict[k] = v
 
-
-
+    return output["loss"], loss_dict
 
 
 
