@@ -115,10 +115,14 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         meta_path = str(cfg.get("meta_path"))
         data_path = str(cfg.get("data_path"))
 
+        image_size = int(cfg.get("image_size"))
+
         batch_size = int(cfg.get("batch_size"))
         bucket_size_multiplier = int(cfg.get("bucket_size_multiplier", 50))
         num_workers = int(cfg.get("num_workers", 0))
         pin_memory = bool(cfg.get("pin_memory", True))
+
+        patch_size = int(cfg.get("patch_size", 16))
 
         shuffle = split == 'train'
 
@@ -131,25 +135,38 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
             testing=testing,
         )
 
-        sampler = BucketBatchSampler(
-            dataset=dataset, 
-            batch_size=batch_size, 
-            bucket_size_multiplier=bucket_size_multiplier, 
-            shuffle=shuffle,
-        )
+        if image_size < 0:
+            sampler = BucketBatchSampler(
+                dataset=dataset, 
+                batch_size=batch_size, 
+                bucket_size_multiplier=bucket_size_multiplier, 
+                shuffle=shuffle,
+            )
 
-        loader = DataLoader(
-            dataset, 
-            batch_sampler=sampler,
-            collate_fn=center_pad_multimodal_collate,
-            num_workers=num_workers, 
-            pin_memory=pin_memory,
-        )
+            loader = DataLoader(
+                dataset, 
+                batch_sampler=sampler,
+                collate_fn=center_pad_multimodal_collate,
+                num_workers=num_workers, 
+                pin_memory=pin_memory,
+            )
+        else:
+            loader = DataLoader(
+                dataset, 
+                batch_size=batch_size, 
+                shuffle=shuffle, 
+                num_workers=num_workers, 
+                pin_memory=pin_memory
+            )
 
         return loader
 
 
-def center_pad_multimodal_collate(batch, pad_value=1.0):
+def center_pad_multimodal_collate(
+    batch, 
+    patch_size: int = 32, 
+    pad_value: float = 1.0,
+):
     idxs        = [item['idx']        for item in batch]
     imgs        = [item['image']      for item in batch]
     captions    = [item['text_input'] for item in batch]
@@ -157,9 +174,9 @@ def center_pad_multimodal_collate(batch, pad_value=1.0):
     priors      = [item['prior']      for item in batch]
 
     max_h = max(img.shape[1] for img in imgs)
-    max_h = (max_h // 16 + 1) * 16
+    max_h = (max_h // patch_size + 1) * patch_size
     max_w = max(img.shape[2] for img in imgs)
-    max_w = (max_w // 16 + 1) * 16
+    max_w = (max_w // patch_size + 1) * patch_size
 
     padded_imgs = []
     for img in imgs:

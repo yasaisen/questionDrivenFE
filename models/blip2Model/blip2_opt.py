@@ -191,6 +191,23 @@ class Blip2OPT(Blip2Base):
             )
         loss = outputs.loss
 
+        # TODO acc return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         return {"loss": loss}
 
 

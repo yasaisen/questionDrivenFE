@@ -8,28 +8,29 @@
 
 model:
   weight_path: "/home/yasaisen/Desktop/27_research/research_main_v2/lab_07/weights"
-  vit_model: "prov-gigapath"
+  vit_model: "vit_base"
   # image_size: None
-  freeze_vit: True
+  freeze_vit: False
   cross_attention_freq: 4
   num_query_token: 32
   max_txt_len: 48
   embed_dim: 256
   drop_path_rate: 0
-  use_grad_checkpoint: False
+  use_grad_checkpoint: True
 
 dataset:
   meta_path: "/home/yasaisen/Desktop/27_research/research_main_v2/lab_05/togit_v1/cleanPathVQAset_meta_2506060316.json"
   data_path: "/home/yasaisen/Desktop/27_research/research_datasets/cleanPCset_v1/quilt_1m/images"
   
-  # image_size: None
-  batch_size: 8
+  image_size: -1
+  batch_size: 2
   bucket_size_multiplier: 50
   num_workers: 0
   pin_memory: True
 
 task:
-  num_epoch: 30
+  # kd_teacher_name: "prov-gigapath"
+  num_epoch: 12
   
   learning_rate: 1e-4
   weight_decay: 1e-2

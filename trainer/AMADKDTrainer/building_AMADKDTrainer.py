@@ -8,12 +8,29 @@
  last modified in 2506122347
 """
 
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from __future__ import annotations
+# from __future__ import annotations
 from typing import List, Sequence, Union, Iterable, Dict
+import timm
 
+from ...common.utils import log_print, get_trainable_params, highlight, highlight_show
+
+
+WEIGHT_MAPPING_DICT = {
+    'biogpt_embedding': 'biogpt_embedding.pth', 
+
+    'prov-gigapath': 'tile_encoder.pth', 
+    'H-optimus-0': 'H-optimus-0.pth', 
+    'vit_base': 'vit_base_patch32_clip_224.pth', 
+    'vit_large': 'vit_large_patch14_clip_224.pth', 
+
+    'histogpt-config': 'biogpt-large-config.json', 
+    'histogpt-3b': 'histogpt-3b-6k-pruned.pth', 
+    'histogpt-1b': 'histogpt-1b-6k-pruned.pth', 
+}
 
 def evenly_pick_indices(
     A: int, 
@@ -156,12 +173,74 @@ class ViTAttentionExtractor:
             self.maps.append(attn)
         return _hook
     
+def get_teacher_model(
+    model_name: str,
+    weight_path: str, 
+    device: str = "cuda",
+):
+    log_print(f"Loading kd_teacher({model_name})...", newline=False)
+    if model_name == 'prov-gigapath': # 1,134,953,984
+        teacher_model = timm.create_model(
+            "hf_hub:prov-gigapath/prov-gigapath", 
+            pretrained=False, 
+            checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+            dynamic_img_size=True
+        ).eval().to(device)
+        teacher_patch_size = 16
 
+    elif model_name == 'H-optimus-0': # 1,134,774,272
+        teacher_model = timm.create_model(
+            "hf-hub:bioptimus/H-optimus-0", 
+            pretrained=False, 
+            checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+            init_values=1e-5, 
+            dynamic_img_size=True
+        ).eval().to(device)
+        teacher_patch_size = 14
 
+    elif model_name == 'vit_base': # 87,849,728
+        teacher_model = timm.create_model(
+            "vit_base_patch32_224_clip_laion2b", 
+            pretrained=True, 
+            # pretrained=False, 
+            # checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+            dynamic_img_size=True
+        ).eval().to(device)
+        teacher_patch_size = 32
 
+    elif model_name == 'vit_large': # 303,966,976
+        teacher_model = timm.create_model(
+            "vit_large_patch14_224_clip_laion2b", 
+            pretrained=True, 
+            # pretrained=False, 
+            # checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+            dynamic_img_size=True
+        ).eval().to(device)
+        teacher_patch_size = 14
 
+    print("...Done")
+    log_print(f"kd_teacher trainable params: {get_trainable_params(teacher_model)}")
+    for name, param in teacher_model.named_parameters():
+        param.requires_grad = False
+    log_print(f"kd_teacher trainable params: {get_trainable_params(teacher_model)}")
 
+    return teacher_model, teacher_patch_size
 
+def sample_patch_adjust(
+    samples: torch.Tensor, 
+    patch_size: int, 
+):
+    q = (samples.shape[2] // patch_size + 1) * patch_size
+    k = (samples.shape[3] // patch_size + 1) * patch_size
+
+    samples = F.interpolate(
+        samples, 
+        size=(q, k), 
+        mode='bilinear', 
+        align_corners=False
+    )
+
+    return samples
 
 
 

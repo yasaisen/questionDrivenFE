@@ -410,7 +410,7 @@ def outputClass2lossDict(
 ):
     loss_dict = {}
     for k,v in output.items():
-        if "loss" in k:
+        # if "loss" in k:
             loss_dict[k] = v
 
     return output["loss"], loss_dict

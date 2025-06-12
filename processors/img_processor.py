@@ -25,8 +25,10 @@ class ImgProcessor():
         min_scale: float = 0.5, 
         max_scale: float = 1.0
     ):
-
         self.image_size = image_size
+        if self.image_size < 0:
+            self.image_size = None
+        
         self.min_scale = min_scale
         self.max_scale = max_scale
 
@@ -147,7 +149,7 @@ class ImgProcessor():
     def from_config(cls, 
         cfg
     ):
-        image_size = cfg.get("image_size", None)
+        image_size = cfg.get("image_size", -1)
         mean = cfg.get("mean", None)
         std = cfg.get("std", None)
         min_scale = cfg.get("min_scale", 0.5)

@@ -33,6 +33,13 @@ from ..blip2Model.blip_outputs import BlipOutput, BlipOutputFeatures
 from ...common.utils import log_print, get_trainable_params, highlight, highlight_show
 
 
+LOSS_WEIGHT = {
+    'loss_itc': 1.0, 
+    'loss_itm': 0.3, 
+    'loss_lm': 0.5, 
+}
+
+
 class Blip2Qformer(Blip2Base):
     def __init__(self,
         weight_path: str,
@@ -297,6 +304,10 @@ class Blip2Qformer(Blip2Base):
         )
 
         loss_lm = lm_output.loss
+
+        loss_itc = LOSS_WEIGHT['loss_itc'] * loss_itc
+        loss_itm = LOSS_WEIGHT['loss_itm'] * loss_itm
+        loss_lm = LOSS_WEIGHT['loss_lm'] * loss_lm
 
         return BlipOutput(
             loss=loss_itc + loss_itm + loss_lm,
