@@ -37,6 +37,9 @@ WEIGHT_MAPPING_DICT = {
     'biogpt_embedding': 'biogpt_embedding.pth', 
 
     'prov-gigapath': 'tile_encoder.pth', 
+    'H-optimus-0': 'H-optimus-0.pth', 
+    'vit_base': '.pth', 
+    'vit_large': '.pth', 
 
     'histogpt-config': 'biogpt-large-config.json', 
     'histogpt-3b': 'histogpt-3b-6k-pruned.pth', 
@@ -117,13 +120,37 @@ class Blip2Base(BaseModel):
         drop_path_rate, 
         use_grad_checkpoint
     ):
-        if model_name == 'prov-gigapath':
+        if model_name == 'prov-gigapath': # 1,134,953,984
             visual_encoder = timm.create_model(
                 "hf_hub:prov-gigapath/prov-gigapath", 
                 pretrained=False, 
                 checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
                 dynamic_img_size=True
             )
+        elif model_name == 'H-optimus-0': # 1,134,774,272
+            visual_encoder = timm.create_model(
+                "hf-hub:bioptimus/H-optimus-0", 
+                pretrained=False, 
+                checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+                init_values=1e-5, 
+                dynamic_img_size=True
+            )
+        elif model_name == 'vit_base': # 87,849,728
+            visual_encoder = timm.create_model(
+                "vit_base_patch32_224_clip_laion2b", 
+                pretrained=False, 
+                checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+                dynamic_img_size=True
+            )
+        elif model_name == 'vit_large': # 303,966,976
+            visual_encoder = timm.create_model(
+                "vit_large_patch14_224_clip_laion2b", 
+                pretrained=False, 
+                checkpoint_path=os.path.join(weight_path, WEIGHT_MAPPING_DICT[model_name]),
+                dynamic_img_size=True
+            )
+
+        visual_encoder.set_grad_checkpointing(use_grad_checkpoint)
         ln_vision = LayerNorm(visual_encoder.num_features)
         self.vit_name = model_name
         return visual_encoder, ln_vision
