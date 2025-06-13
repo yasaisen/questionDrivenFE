@@ -51,11 +51,8 @@ class BLIP2Trainer:
         kd_teacher_name: str, 
         learning_rate: float = 1e-5,
         weight_decay: float = 1e-4, 
-        max_lr: float = 1e-3, 
         num_epoch: int = 30, 
         steps_per_epoch: int = 30, 
-        pct_start: float = 0.2, 
-        anneal_strategy: str = 'cos', 
         use_amp: bool = True, 
         device: str = "cuda",
     ):
@@ -69,11 +66,8 @@ class BLIP2Trainer:
 
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
-        self.max_lr = max_lr
         self.num_epoch = num_epoch
         self.steps_per_epoch = steps_per_epoch
-        self.pct_start = pct_start
-        self.anneal_strategy = anneal_strategy
         self.use_amp = use_amp
 
         # self.optimizer = optim.AdamW(
@@ -113,7 +107,7 @@ class BLIP2Trainer:
 
         self.scaler = torch.cuda.amp.GradScaler() if self.use_amp else None
 
-        self.do_kd = kd_teacher_name is not None
+        self.do_kd = kd_teacher_name != 'NoDistill'
         if self.do_kd:
             self.teacher_model, self.teacher_patch_size = get_teacher_model(
                 model_name=kd_teacher_name,
@@ -141,7 +135,7 @@ class BLIP2Trainer:
 
         log_print(f'Start training epoch {cur_epoch}, {len(data_loader)} iters per inner epoch.')
         # for idx, samples in enumerate(data_loader):
-        for idx, samples in tqdm(enumerate(data_loader)):
+        for idx, samples in tqdm(enumerate(data_loader), total=len(data_loader)):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
 
             if self.do_kd:
@@ -225,7 +219,7 @@ class BLIP2Trainer:
 
         log_print(f'Start validing epoch {cur_epoch}, {len(data_loader)} iters per inner epoch.')
         # for idx, samples in enumerate(data_loader):
-        for idx, samples in tqdm(enumerate(data_loader)):
+        for idx, samples in tqdm(enumerate(data_loader), total=len(data_loader)):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
 
             with torch.cuda.amp.autocast(enabled=self.use_amp):
@@ -255,15 +249,9 @@ class BLIP2Trainer:
         cfg_handler: ConfigHandler,
     ):
         kd_teacher_name = cfg.get("kd_teacher_name")
-        if kd_teacher_name < 0:
-            kd_teacher_name = None
-            
         num_epoch = int(cfg.get("num_epoch"))
         learning_rate = float(cfg.get("learning_rate"))
         weight_decay = float(cfg.get("weight_decay"))
-        max_lr = float(cfg.get("max_lr"))
-        pct_start = float(cfg.get("pct_start"))
-        anneal_strategy = str(cfg.get("anneal_strategy"))
         device = str(cfg.get("device"))
 
         trainer = cls(
@@ -272,11 +260,8 @@ class BLIP2Trainer:
             kd_teacher_name=kd_teacher_name, 
             learning_rate=learning_rate,
             weight_decay=weight_decay, 
-            max_lr=max_lr, 
             num_epoch=num_epoch, 
             steps_per_epoch=steps_per_epoch, 
-            pct_start=pct_start, 
-            anneal_strategy=anneal_strategy, 
             device=device,
         )
         return trainer

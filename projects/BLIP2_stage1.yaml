@@ -9,7 +9,6 @@
 model:
   weight_path: "/home/yasaisen/Desktop/27_research/research_main_v2/lab_07/weights"
   vit_model: "vit_base"
-  # image_size: None
   freeze_vit: False
   cross_attention_freq: 4
   num_query_token: 32
@@ -17,26 +16,34 @@ model:
   embed_dim: 256
   drop_path_rate: 0
   use_grad_checkpoint: False # if KD do not turn on
+  # image_size: None
 
 dataset:
   meta_path: "/home/yasaisen/Desktop/27_research/research_main_v2/lab_05/togit_v1/cleanPathVQAset_meta_2506060316.json"
   data_path: "/home/yasaisen/Desktop/27_research/research_datasets/cleanPCset_v1/quilt_1m/images"
+  croped_data: False
   
-  image_size: -1
-  batch_size: 2
+  multi_res_method: 'RatioPadInterp' # 'SimpleResize', 'RatioPadInterp', 'PatchPadBucket'
+  
+  image_size: 256
+  size_ratio: 2
+  new_img_height: 256
+  pad_value: 1
   bucket_size_multiplier: 50
+  
+  test_data_num: 
+    train: 16
+    valid: 16
+  batch_size: 2
   num_workers: 0
   pin_memory: True
 
 task:
-  kd_teacher_name: "prov-gigapath"
+  kd_teacher_name: "prov-gigapath" # 'NoDistill', 'prov-gigapath', 'H-optimus-0'
   num_epoch: 12
   
   learning_rate: 1e-4
   weight_decay: 1e-2
-  max_lr: 1e-3
-  pct_start: 0.2
-  anneal_strategy: "cos"
   device: "cuda"
   
   val_freq: 2

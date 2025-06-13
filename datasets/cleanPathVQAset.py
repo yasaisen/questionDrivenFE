@@ -12,6 +12,7 @@ import os
 import torch
 from torch.utils.data import Dataset, Sampler, DataLoader
 from tqdm import tqdm
+from typing import Dict
 from PIL import Image
 import cv2
 import random
@@ -27,12 +28,14 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         split: str,
         img_processor, 
         txt_processor, 
+        croped_data: bool = False, 
         testing: int = None,
     ):
         log_print(f"Building...", head=True)
 
         self.meta_path = meta_path
         self.data_path = data_path
+        self.croped_data = croped_data
         self.img_processor = img_processor
         self.txt_processor = txt_processor
         self.split = split
@@ -59,10 +62,17 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
 
         global_idx = self.meta_list[idx]['sample_idx']
 
-        image_path = os.path.join(self.data_path, self.meta_list[idx]['image_path'])
-        # image = Image.open(image_path).convert("RGB")
+        if not self.croped_data:
+            image_path = os.path.join(self.data_path, self.meta_list[idx]['image_path'])
+            # image = Image.open(image_path).convert("RGB")
+        else:
+            image_path = os.path.join(self.data_path, self.meta_list[idx]['cleaned_image_path'])
         image = cv2.imread(image_path)
-        input_image = self.img_processor(image)
+
+        if self.split == 'train':
+            input_image = self.img_processor(image)
+        else:
+            input_image = self.img_processor.testing(image)
 
         caption = self.meta_list[idx]['caption']
         input_caption = self.txt_processor(caption)
@@ -116,33 +126,38 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
     ):
         meta_path = str(cfg.get("meta_path"))
         data_path = str(cfg.get("data_path"))
+        croped_data = bool(cfg.get("croped_data"))
 
-        image_size = int(cfg.get("image_size"))
+        multi_res_method = str(cfg.get("multi_res_method"))
+        if multi_res_method == 'SimpleResize':
+            pass
+        elif multi_res_method == 'RatioPadInterp':
+            pass
+        elif multi_res_method == 'PatchPadBucket':
+            bucket_size_multiplier = cfg.get("bucket_size_multiplier")
+
         testing = cfg.get("test_data_num")
-        if type(testing) == int:
-            testing = None
-        else:
+        if type(testing) == dict:
             testing = testing.get(split)
+        else:
+            testing = None
 
         batch_size = int(cfg.get("batch_size"))
-        bucket_size_multiplier = int(cfg.get("bucket_size_multiplier", 50))
         num_workers = int(cfg.get("num_workers", 0))
         pin_memory = bool(cfg.get("pin_memory", True))
-
-        patch_size = int(cfg.get("patch_size", 16))
-
         shuffle = split == 'train'
 
         dataset = cls(
             meta_path=meta_path, 
             data_path=data_path, 
+            croped_data=croped_data, 
             split=split,
             img_processor=img_processor, 
             txt_processor=txt_processor, 
             testing=testing,
         )
 
-        if image_size < 0:
+        if multi_res_method == 'PatchPadBucket':
             sampler = BucketBatchSampler(
                 dataset=dataset, 
                 batch_size=batch_size, 

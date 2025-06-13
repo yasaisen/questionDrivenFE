@@ -20,7 +20,8 @@ model:
 
 dataset:
   meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
-  data_path: "/work/misaka13/cleanPCset_v1/quilt_1m/images"
+  data_path: "/work/misaka13/cleanPCset_v2/breast"
+  croped: True
   
   test_data_num: 
     train: 12288

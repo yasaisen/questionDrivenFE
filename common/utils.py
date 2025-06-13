@@ -225,7 +225,7 @@ def sample_device_adjust(
     if cuda_enabled:
         def _apply(x):
             if torch.is_tensor(x):
-                return x.cuda()
+                return x.cuda(non_blocking=True)
             elif isinstance(x, dict):
                 return {key: _apply(value) for key, value in x.items()}
             elif isinstance(x, list):

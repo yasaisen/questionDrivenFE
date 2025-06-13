@@ -118,7 +118,7 @@ class ViTAttentionExtractor:
     def __init__(self,
         model: nn.Module,
         layers: Union[str, int, Sequence[int]] = "all",
-        store_cpu: bool = True,
+        store_cpu: bool = False,
         keep_fused: bool = False,
     ):
         self.model = model

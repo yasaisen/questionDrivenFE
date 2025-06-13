@@ -5,7 +5,7 @@
  This file is part of a project licensed under the MIT License.
  See the LICENSE file in the project root for more information.
  
- last modified in 2506132139
+ last modified in 2506132100
 """
 
 import cv2
@@ -16,16 +16,31 @@ from torchvision import transforms
 import torch.nn.functional as F
 from typing import Dict
 import torch
+from torchvision.transforms.functional import InterpolationMode
 
 
 class ImgProcessor():
     def __init__(self, 
         image_size: int = None, 
+        # mean: tuple = None, 
+        # std: tuple = None, 
+        # min_scale: float = 0.5, 
+        # max_scale: float = 1.0,
         center_pad_dict: Dict = None, 
 
     ):
         self.center_pad_dict = center_pad_dict
         self.image_size = image_size
+        if self.image_size < 0:
+            self.image_size = None
+        
+        # self.min_scale = min_scale
+        # self.max_scale = max_scale
+
+        # if mean is None:
+        #     self.mean = (0.48145466, 0.4578275, 0.40821073)
+        # if std is None:
+        #     self.std = (0.26862954, 0.26130258, 0.27577711)
 
         self.aug_pipeline = A.Compose([
             A.HorizontalFlip(p=0.5),
@@ -35,17 +50,29 @@ class ImgProcessor():
             A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.5),
             A.HueSaturationValue(hue_shift_limit=10, sat_shift_limit=10, val_shift_limit=10, p=0.3),
 
+            # A.GaussNoise(var_limit=(10.0, 50.0), mean=0, p=0.3),
             A.GaussNoise(std_range=(0.3, 0.7), mean_range=(0.0, 0.0), p=0.3),
 
             A.MultiplicativeNoise(multiplier=(0.9, 1.1), per_channel=True, p=0.1), 
 
+            # A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, interpolation=cv2.INTER_CUBIC, border_mode=cv2.BORDER_REFLECT_101, p=0.1), 
             A.ElasticTransform(alpha=1, sigma=50, interpolation=cv2.INTER_CUBIC, p=0.1), 
 
+            # A.CoarseDropout(max_holes=3, max_height=20, max_width=20, fill_value=random.randint(100, 200), p=0.1),
             A.CoarseDropout(num_holes_range=(1, 3), hole_height_range=(5, 20), hole_width_range=(5, 20), fill=random.randint(100, 200), p=0.1),
 
         ])
         self.pre_transform = transforms.Compose([
+            # transforms.RandomResizedCrop(
+            #     image_size,
+            #     scale=(self.min_scale, self.max_scale),
+            #     interpolation=InterpolationMode.BICUBIC,
+            # ),
             transforms.ToTensor(),
+            # transforms.Normalize(
+            #     mean=self.mean, 
+            #     std=self.std
+            # ),
         ])
         
     @staticmethod
@@ -114,12 +141,7 @@ class ImgProcessor():
         aug_image = self.pre_transform(aug_image)
 
         if self.image_size is not None:
-            aug_image = F.interpolate(
-                aug_image.unsqueeze(0), 
-                size=(self.image_size, self.image_size), 
-                mode='bicubic', 
-                align_corners=False
-            ).squeeze(0)
+            aug_image = F.interpolate(aug_image.unsqueeze(0), size=(self.image_size, self.image_size), mode='bicubic', align_corners=False).squeeze(0)
 
         if self.center_pad_dict is not None:
             aug_image = center_padding(
@@ -139,13 +161,8 @@ class ImgProcessor():
         aug_image = self.pre_transform(aug_image)
 
         if self.image_size is not None:
-            aug_image = F.interpolate(
-                aug_image.unsqueeze(0), 
-                size=(self.image_size, self.image_size), 
-                mode='bicubic', 
-                align_corners=False
-            ).squeeze(0)
-        
+            aug_image = F.interpolate(aug_image.unsqueeze(0), size=(self.image_size, self.image_size), mode='bicubic', align_corners=False).squeeze(0)
+
         if self.center_pad_dict is not None:
             aug_image = center_padding(
                 image=aug_image, 
@@ -165,7 +182,6 @@ class ImgProcessor():
             image_size = cfg.get("image_size")
             center_pad_dict = None
         elif multi_res_method == 'RatioPadInterp':
-            image_size = None
             center_pad_dict = {
                 'size_ratio': cfg.get("size_ratio"), 
                 'new_img_height': cfg.get("new_img_height"), 
@@ -175,8 +191,17 @@ class ImgProcessor():
             image_size = None
             center_pad_dict = None
 
+        # mean = cfg.get("mean", None)
+        # std = cfg.get("std", None)
+        # min_scale = cfg.get("min_scale", 0.5)
+        # max_scale = cfg.get("max_scale", 1.0)
+
         processor = cls(
             image_size=image_size,
+            # mean=mean,
+            # std=std,
+            # min_scale=min_scale,
+            # max_scale=max_scale,
             center_pad_dict=center_pad_dict, 
         )
 
@@ -204,7 +229,7 @@ def center_padding(
     image_padded = F.pad(
         image, 
         (pad_left, pad_top, pad_right, pad_bottom),
-        value=pad_value
+        fill=pad_value
     )
 
     if new_img_height is not None:
