@@ -31,7 +31,6 @@ from ..AMADKDTrainer.building_AMADKDTrainer import (
     get_teacher_model, 
     sample_patch_adjust,
 )
-from ...models.blip2Model.dist_utils import is_main_process
 
 
 GRAD_CLIP = 1.0
@@ -140,7 +139,6 @@ class BLIP2Trainer:
         self.model.train()
         metrics_list = []
 
-        # if is_main_process():
         # log_print(f'Start training epoch {cur_epoch}, {iters_per_epoch} iters per inner epoch.')
         for idx, samples in enumerate(data_loader):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
@@ -213,8 +211,7 @@ class BLIP2Trainer:
             metrics_list.append(metrics)
 
         avg_dict = self.cfg_handler.get_update_avg()
-        if is_main_process():
-            log_print(f'[train] [{cur_epoch}] {avg_dict}')
+        log_print(f'[train] [{cur_epoch}] {avg_dict}')
 
         return metrics_list
 
@@ -225,7 +222,6 @@ class BLIP2Trainer:
     ):
         self.model.eval()
 
-        # if is_main_process():
         #     log_print(f'Start validing epoch {cur_epoch}, {iters_per_epoch} iters per inner epoch.')
         for idx, samples in enumerate(data_loader):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
@@ -245,8 +241,7 @@ class BLIP2Trainer:
             )
 
         avg_dict = self.cfg_handler.get_update_avg()
-        if is_main_process():
-            log_print(f'[valid] [{cur_epoch}] {avg_dict}')
+        log_print(f'[valid] [{cur_epoch}] {avg_dict}')
 
         return avg_dict
 

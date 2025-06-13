@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 import inspect
 import os
 
+from ..models.blip2Model.dist_utils import is_main_process
+
         
 def log_print(
     text: str = '', 
@@ -28,29 +30,30 @@ def log_print(
     newline: bool = True,
     traceback: bool = False,
 ):
-    frame = inspect.currentframe().f_back
-    func_name = frame.f_code.co_name
-    nowtime = datetime.now().strftime('%H:%M:%S')
+    if is_main_process():
+        frame = inspect.currentframe().f_back
+        func_name = frame.f_code.co_name
+        nowtime = datetime.now().strftime('%H:%M:%S')
 
-    cls_name = None
-    if 'self' in frame.f_locals:
-        cls_name = frame.f_locals['self'].__class__.__name__
-    elif 'cls' in frame.f_locals:
-        cls_name = frame.f_locals['cls'].__name__
+        cls_name = None
+        if 'self' in frame.f_locals:
+            cls_name = frame.f_locals['self'].__class__.__name__
+        elif 'cls' in frame.f_locals:
+            cls_name = frame.f_locals['cls'].__name__
 
-    if head:
-        print()
-    if cls_name:
-        print(f"[{nowtime}] [{cls_name}.{func_name}] {text}", end='')
-    else:
-        print(f"[{nowtime}] [{func_name}] {text}", end='')
-    if newline:
-        print()
-    if traceback:
-        for line in inspect.stack():
-            if line.function == func_name:
-                continue
-            print(f"  -> {line.filename}:{line.lineno} in {line.function} on line {line.lineno}")
+        if head:
+            print()
+        if cls_name:
+            print(f"[{nowtime}] [{cls_name}.{func_name}] {text}", end='')
+        else:
+            print(f"[{nowtime}] [{func_name}] {text}", end='')
+        if newline:
+            print()
+        if traceback:
+            for line in inspect.stack():
+                if line.function == func_name:
+                    continue
+                print(f"  -> {line.filename}:{line.lineno} in {line.function} on line {line.lineno}")
 
 def checkpath(path):
     if not os.path.exists(path):
