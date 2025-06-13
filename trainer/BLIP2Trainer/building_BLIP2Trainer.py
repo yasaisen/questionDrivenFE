@@ -133,7 +133,7 @@ class BLIP2Trainer:
         self.model.train()
         metrics_list = []
 
-        log_print(f'Start training epoch {cur_epoch}, {len(data_loader)} iters per inner epoch.')
+        log_print(f'\nStart training epoch {cur_epoch}, {len(data_loader)} iters per inner epoch.')
         # for idx, samples in enumerate(data_loader):
         for idx, samples in tqdm(enumerate(data_loader), total=len(data_loader)):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)

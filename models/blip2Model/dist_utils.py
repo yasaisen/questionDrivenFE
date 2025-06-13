@@ -61,10 +61,8 @@ def is_main_process():
     return get_rank() == 0
 
 
-from ...common.utils import Config
-
-
 def init_distributed_mode(cfg):
+    from ...common.utils import Config
     args = Config(cfg)
 
     if "RANK" in os.environ and "WORLD_SIZE" in os.environ:

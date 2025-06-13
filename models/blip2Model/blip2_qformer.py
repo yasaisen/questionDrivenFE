@@ -205,6 +205,15 @@ class Blip2Qformer(Blip2Base):
                 + F.cross_entropy(sim_t2i, targets, label_smoothing=0.1)
             ) / 2
 
+
+        with torch.no_grad():
+            # image→text
+            preds_i2t = sim_i2t.argmax(dim=1)
+            r1_i2t = (preds_i2t == targets).float().mean()
+            # text→image
+            preds_t2i = sim_t2i.argmax(dim=1)
+            r1_t2i = (preds_t2i == targets).float().mean()
+
         ###============== Image-text Matching ===================###
         text_input_ids_world = concat_all_gather(text_tokens.input_ids)
         text_attention_mask_world = concat_all_gather(text_tokens.attention_mask)
@@ -305,6 +314,9 @@ class Blip2Qformer(Blip2Base):
 
         loss_lm = lm_output.loss
 
+        with torch.no_grad():
+            ppl = torch.exp(loss_lm)
+
         loss_itc = LOSS_WEIGHT['loss_itc'] * loss_itc
         loss_itm = LOSS_WEIGHT['loss_itm'] * loss_itm
         loss_lm = LOSS_WEIGHT['loss_lm'] * loss_lm
@@ -314,7 +326,13 @@ class Blip2Qformer(Blip2Base):
             loss_itc=loss_itc,
             loss_itm=loss_itm,
             loss_lm=loss_lm,
+
+            r1_i2t=r1_i2t,
+            r1_t2i=r1_t2i,
+
             acc_itm=acc_itm, 
+
+            ppl=ppl,
         )
 
     @torch.no_grad()

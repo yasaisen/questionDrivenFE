@@ -91,7 +91,10 @@ class BlipOutput(ModelOutput):
 
     loss_lm: Optional[torch.FloatTensor] = None
 
+    r1_i2t: Optional[torch.FloatTensor] = None
+    r1_t2i: Optional[torch.FloatTensor] = None
     acc_itm: Optional[torch.FloatTensor] = None
+    ppl: Optional[torch.FloatTensor] = None
 
 
 @dataclass
