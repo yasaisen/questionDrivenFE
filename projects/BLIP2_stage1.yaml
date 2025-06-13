@@ -25,9 +25,9 @@ dataset:
   
   multi_res_method: 'RatioPadInterp' # 'SimpleResize', 'RatioPadInterp', 'PatchPadBucket'
   
-  image_size: 256
+  image_size: 128
   size_ratio: 2
-  new_img_height: 256
+  new_img_height: 128
   pad_value: 1
   bucket_size_multiplier: 50
   
@@ -39,7 +39,7 @@ dataset:
   pin_memory: True
 
 task:
-  kd_teacher_name: "NoDistill" # 'NoDistill', 'prov-gigapath', 'H-optimus-0'
+  kd_teacher_name: "H-optimus-0" # 'NoDistill', 'prov-gigapath', 'H-optimus-0'
   num_epoch: 12
   
   learning_rate: 1e-4

@@ -42,6 +42,7 @@ LR_DICT = {
 SCHEDULER = {
     'warmup_steps': 500, 
 }
+STORE_CPU = True
 
 
 class BLIP2Trainer:
@@ -69,6 +70,7 @@ class BLIP2Trainer:
         self.num_epoch = num_epoch
         self.steps_per_epoch = steps_per_epoch
         self.use_amp = use_amp
+        self.store_cpu = STORE_CPU
 
         # self.optimizer = optim.AdamW(
         #     filter(lambda p: p.requires_grad, model.parameters()), 
@@ -140,7 +142,7 @@ class BLIP2Trainer:
 
             if self.do_kd:
                 with torch.no_grad():
-                    with ViTAttentionExtractor(self.teacher_model) as ex_t:
+                    with ViTAttentionExtractor(self.teacher_model, store_cpu=self.store_cpu) as ex_t:
                         teacher_samples = sample_patch_adjust(
                             samples=samples['image'], 
                             patch_size=self.teacher_patch_size,
@@ -149,7 +151,7 @@ class BLIP2Trainer:
                         teacher_attns = ex_t.maps
 
                 with torch.cuda.amp.autocast(enabled=self.use_amp):
-                    with ViTAttentionExtractor(self.model.visual_encoder) as ex_s:
+                    with ViTAttentionExtractor(self.model.visual_encoder, store_cpu=self.store_cpu) as ex_s:
                         output = self.model(samples)
                         loss, metrics = outputClass2lossDict(output)
 
