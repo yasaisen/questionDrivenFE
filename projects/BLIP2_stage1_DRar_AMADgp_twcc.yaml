@@ -22,7 +22,9 @@ dataset:
   meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
   data_path: "/work/misaka13/cleanPCset_v1/quilt_1m/images"
   
-  test_data_num: 6144
+  test_data_num: 
+    train: 12288
+    valid: 512
   image_size: -1  ###
   batch_size: 16
   bucket_size_multiplier: 50

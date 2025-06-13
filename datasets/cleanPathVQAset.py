@@ -121,6 +121,8 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         testing = cfg.get("test_data_num")
         if testing < 0:
             testing = None
+        else:
+            testing = testing.get(split)
 
         batch_size = int(cfg.get("batch_size"))
         bucket_size_multiplier = int(cfg.get("bucket_size_multiplier", 50))
