@@ -35,9 +35,10 @@ from ...common.utils import log_print, get_trainable_params, highlight, highligh
 
 LOSS_WEIGHT = {
     'loss_itc': 1.0, 
-    'loss_itm': 0.3, 
+    'loss_itm': 0.2, 
     'loss_lm': 0.5, 
 }
+TEMP = 0.05
 
 
 class Blip2Qformer(Blip2Base):
@@ -104,7 +105,7 @@ class Blip2Qformer(Blip2Base):
 
         self.itm_head = nn.Linear(self.Qformer.config.hidden_size, 2)
 
-        self.temp = nn.Parameter(0.07 * torch.ones([]))
+        self.temp = nn.Parameter(TEMP * torch.ones([]))
 
         self.max_txt_len = max_txt_len
 
