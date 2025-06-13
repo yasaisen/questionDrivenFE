@@ -21,7 +21,7 @@ model:
 dataset:
   meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
   data_path: "/work/misaka13/cleanPCset_v2/breast"
-  croped_data: True
+  croped_data_key: null
   
   multi_res_method: 'SimpleResize' # 'SimpleResize', 'RatioPadInterp', 'PatchPadBucket'
   

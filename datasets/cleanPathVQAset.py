@@ -28,14 +28,14 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         split: str,
         img_processor, 
         txt_processor, 
-        croped_data: bool = False, 
+        croped_data_key: str = None, 
         testing: int = None,
     ):
         log_print(f"Building...", head=True)
 
         self.meta_path = meta_path
         self.data_path = data_path
-        self.croped_data = croped_data
+        self.croped_data_key = croped_data_key
         self.img_processor = img_processor
         self.txt_processor = txt_processor
         self.split = split
@@ -62,11 +62,11 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
 
         global_idx = self.meta_list[idx]['sample_idx']
 
-        if not self.croped_data:
+        if self.croped_data_key is None:
             image_path = os.path.join(self.data_path, self.meta_list[idx]['image_path'])
-            # image = Image.open(image_path).convert("RGB")
         else:
-            image_path = os.path.join(self.data_path, self.meta_list[idx]['cleaned_image_path'])
+            image_path = os.path.join(self.data_path, self.meta_list[idx][self.croped_data_key])
+
         image = cv2.imread(image_path)
 
         if self.split == 'train':
@@ -126,7 +126,8 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
     ):
         meta_path = str(cfg.get("meta_path"))
         data_path = str(cfg.get("data_path"))
-        croped_data = bool(cfg.get("croped_data"))
+
+        croped_data_key = cfg.get("croped_data_key")
 
         multi_res_method = str(cfg.get("multi_res_method"))
         if multi_res_method == 'SimpleResize':
@@ -150,7 +151,7 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         dataset = cls(
             meta_path=meta_path, 
             data_path=data_path, 
-            croped_data=croped_data, 
+            croped_data_key=croped_data_key, 
             split=split,
             img_processor=img_processor, 
             txt_processor=txt_processor, 

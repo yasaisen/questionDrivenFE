@@ -166,11 +166,12 @@ class ImgProcessor():
             center_pad_dict = None
         elif multi_res_method == 'RatioPadInterp':
             image_size = None
-            center_pad_dict = {
-                'size_ratio': cfg.get("size_ratio"), 
-                'new_img_height': cfg.get("new_img_height"), 
-                'pad_value': cfg.get("pad_value"), 
-            }
+            # center_pad_dict = {
+            #     'size_ratio': cfg.get("size_ratio"), 
+            #     'new_img_height': cfg.get("new_img_height"), 
+            #     'pad_value': cfg.get("pad_value"), 
+            # }
+            center_pad_dict = None
         elif multi_res_method == 'PatchPadBucket':
             image_size = None
             center_pad_dict = None
