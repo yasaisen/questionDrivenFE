@@ -57,7 +57,7 @@ def log_print(
 
 def checkpath(path):
     if not os.path.exists(path):
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
 class ConfigHandler:
     def __init__(self, 
