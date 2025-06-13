@@ -119,7 +119,7 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
 
         image_size = int(cfg.get("image_size"))
         testing = cfg.get("test_data_num")
-        if testing < 0:
+        if type(testing) == int:
             testing = None
         else:
             testing = testing.get(split)
