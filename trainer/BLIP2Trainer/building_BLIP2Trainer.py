@@ -43,7 +43,7 @@ LR_DICT = {
 SCHEDULER = {
     'warmup_steps': 500, 
 }
-STORE_CPU = True
+STORE_CPU = False
 
 
 class BLIP2Trainer:

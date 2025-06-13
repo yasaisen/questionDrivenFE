@@ -19,7 +19,7 @@ model:
   # image_size: None
 
 dataset:
-  meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
+  meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506140230.json"
   data_path: "/work/misaka13/cleanPCset_v2/padded_breast"
   croped_data_key: "padded_cleaned_image_path"
   
