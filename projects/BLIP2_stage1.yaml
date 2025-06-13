@@ -39,7 +39,7 @@ dataset:
   pin_memory: True
 
 task:
-  kd_teacher_name: "prov-gigapath" # 'NoDistill', 'prov-gigapath', 'H-optimus-0'
+  kd_teacher_name: "NoDistill" # 'NoDistill', 'prov-gigapath', 'H-optimus-0'
   num_epoch: 12
   
   learning_rate: 1e-4

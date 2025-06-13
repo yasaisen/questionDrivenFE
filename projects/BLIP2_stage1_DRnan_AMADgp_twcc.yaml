@@ -4,12 +4,11 @@
  # This file is part of a project licensed under the MIT License.
  # See the LICENSE file in the project root for more information.
  # 
- # last modified in 2506131602
+ # last modified in 2506130458
 
 model:
   weight_path: "/work/misaka13/R27_MVLM/weights"
   vit_model: "vit_base"
-  # image_size: None
   freeze_vit: False
   cross_attention_freq: 4
   num_query_token: 32
@@ -17,30 +16,34 @@ model:
   embed_dim: 256
   drop_path_rate: 0
   use_grad_checkpoint: False # if KD do not turn on
+  # image_size: None
 
 dataset:
   meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
   data_path: "/work/misaka13/cleanPCset_v2/breast"
-  croped: True
+  croped_data: True
+  
+  multi_res_method: 'SimpleResize' # 'SimpleResize', 'RatioPadInterp', 'PatchPadBucket'
+  
+  image_size: 448
+  size_ratio: 2
+  new_img_height: 448
+  pad_value: 1
+  bucket_size_multiplier: 50
   
   test_data_num: 
     train: 12288
     valid: 512
-  image_size: 448  ###
   batch_size: 16
-  bucket_size_multiplier: 50
   num_workers: 4
   pin_memory: True
 
 task:
-  kd_teacher_name: "prov-gigapath"  ###
+  kd_teacher_name: "prov-gigapath" # 'NoDistill', 'prov-gigapath', 'H-optimus-0'
   num_epoch: 12
   
   learning_rate: 1e-4
   weight_decay: 1e-2
-  max_lr: 1e-3
-  pct_start: 0.2
-  anneal_strategy: "cos"
   device: "cuda"
   
   val_freq: 3
