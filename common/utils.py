@@ -181,16 +181,17 @@ class ConfigHandler:
         save_filename: str = None, 
         print_log: bool = False,
     ):
-        if save_filename is None:
-            save_filename = self.default_save_filename
-        file_save_path = os.path.join(self.save_path, f'{self.nowtime}_{save_filename}.pth')
-        torch.save(
-            weight_dict, 
-            file_save_path
-        )
+        if is_main_process():
+            if save_filename is None:
+                save_filename = self.default_save_filename
+            file_save_path = os.path.join(self.save_path, f'{self.nowtime}_{save_filename}.pth')
+            torch.save(
+                weight_dict, 
+                file_save_path
+            )
 
-        if print_log:
-            log_print(f"Saved weight to {file_save_path}")
+            if print_log:
+                log_print(f"Saved weight to {file_save_path}")
 
     def close_result(self, 
         ):
