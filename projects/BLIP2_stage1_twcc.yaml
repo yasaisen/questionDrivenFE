@@ -23,9 +23,9 @@ dataset:
   data_path: "/work/misaka13/cleanPCset_v1/quilt_1m/images"
   
   image_size: -1
-  batch_size: 2
+  batch_size: 8
   bucket_size_multiplier: 50
-  num_workers: 0
+  num_workers: 16
   pin_memory: True
 
 task:
