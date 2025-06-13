@@ -4,7 +4,7 @@
  # This file is part of a project licensed under the MIT License.
  # See the LICENSE file in the project root for more information.
  # 
- # last modified in 2506082358
+ # last modified in 2506130458
 
 model:
   weight_path: "/home/yasaisen/Desktop/27_research/research_main_v2/lab_07/weights"
@@ -16,7 +16,7 @@ model:
   max_txt_len: 48
   embed_dim: 256
   drop_path_rate: 0
-  use_grad_checkpoint: True
+  use_grad_checkpoint: False # if KD do not turn on
 
 dataset:
   meta_path: "/home/yasaisen/Desktop/27_research/research_main_v2/lab_05/togit_v1/cleanPathVQAset_meta_2506060316.json"
@@ -29,7 +29,7 @@ dataset:
   pin_memory: True
 
 task:
-  # kd_teacher_name: "prov-gigapath"
+  kd_teacher_name: "prov-gigapath"
   num_epoch: 12
   
   learning_rate: 1e-4
