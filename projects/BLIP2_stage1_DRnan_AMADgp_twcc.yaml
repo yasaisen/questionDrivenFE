@@ -25,9 +25,9 @@ dataset:
   
   multi_res_method: 'SimpleResize' # 'SimpleResize', 'RatioPadInterp', 'PatchPadBucket'
   
-  image_size: 448
+  image_size: 384
   size_ratio: 2
-  new_img_height: 448
+  new_img_height: 384
   pad_value: 1
   bucket_size_multiplier: 50
   

@@ -29,7 +29,8 @@ from ..AMADKDTrainer.building_AMADKDTrainer import (
     amad_kl_loss, 
     ViTAttentionExtractor, 
     get_teacher_model, 
-    sample_patch_adjust,
+    sample_patch_adjust, 
+    evenly_pick_indices
 )
 
 
@@ -141,8 +142,9 @@ class BLIP2Trainer:
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
 
             if self.do_kd:
+                tea_layer_idx_list = evenly_pick_indices(len(self.teacher_model.blocks), len(self.model.visual_encoder.blocks))
                 with torch.no_grad():
-                    with ViTAttentionExtractor(self.teacher_model, store_cpu=self.store_cpu) as ex_t:
+                    with ViTAttentionExtractor(self.teacher_model, layers=tea_layer_idx_list, store_cpu=self.store_cpu) as ex_t:
                         teacher_samples = sample_patch_adjust(
                             samples=samples['image'], 
                             patch_size=self.teacher_patch_size,
