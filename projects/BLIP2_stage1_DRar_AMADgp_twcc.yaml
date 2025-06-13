@@ -1,0 +1,53 @@
+ # SPDX-License-Identifier: MIT
+ # Copyright (c) 2025, yasaisen (clover)
+ # 
+ # This file is part of a project licensed under the MIT License.
+ # See the LICENSE file in the project root for more information.
+ # 
+ # last modified in 2506131602
+
+model:
+  weight_path: "/work/misaka13/R27_MVLM/weights"
+  vit_model: "vit_base"
+  # image_size: None
+  freeze_vit: False
+  cross_attention_freq: 4
+  num_query_token: 32
+  max_txt_len: 48
+  embed_dim: 256
+  drop_path_rate: 0
+  use_grad_checkpoint: False # if KD do not turn on
+
+dataset:
+  meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
+  data_path: "/work/misaka13/cleanPCset_v1/quilt_1m/images"
+  
+  test_data_num: 6144
+  image_size: -1  ###
+  batch_size: 16
+  bucket_size_multiplier: 50
+  num_workers: 4
+  pin_memory: True
+
+task:
+  kd_teacher_name: "prov-gigapath"  ###
+  num_epoch: 12
+  
+  learning_rate: 1e-4
+  weight_decay: 1e-2
+  max_lr: 1e-3
+  pct_start: 0.2
+  anneal_strategy: "cos"
+  device: "cuda"
+  
+  val_freq: 3
+  save_freq: 4
+  
+env:
+  root_path: "/work/misaka13/R27_MVLM_v2"
+  
+  world_size: 1
+  distributed: True
+  dist_url: 'env://'
+
+  output_path: "outputs"

@@ -139,8 +139,9 @@ class BLIP2Trainer:
         self.model.train()
         metrics_list = []
 
-        # log_print(f'Start training epoch {cur_epoch}, {iters_per_epoch} iters per inner epoch.')
-        for idx, samples in enumerate(data_loader):
+        log_print(f'Start training epoch {cur_epoch}, {len(data_loader)} iters per inner epoch.')
+        # for idx, samples in enumerate(data_loader):
+        for idx, samples in tqdm(enumerate(data_loader)):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
 
             if self.do_kd:
@@ -222,8 +223,9 @@ class BLIP2Trainer:
     ):
         self.model.eval()
 
-        #     log_print(f'Start validing epoch {cur_epoch}, {iters_per_epoch} iters per inner epoch.')
-        for idx, samples in enumerate(data_loader):
+        log_print(f'Start validing epoch {cur_epoch}, {len(data_loader)} iters per inner epoch.')
+        # for idx, samples in enumerate(data_loader):
+        for idx, samples in tqdm(enumerate(data_loader)):
             samples = sample_device_adjust(samples, cuda_enabled=self.cuda_enabled)
 
             with torch.cuda.amp.autocast(enabled=self.use_amp):
@@ -252,7 +254,10 @@ class BLIP2Trainer:
         steps_per_epoch: int, 
         cfg_handler: ConfigHandler,
     ):
-        kd_teacher_name = cfg.get("kd_teacher_name", None)
+        kd_teacher_name = cfg.get("kd_teacher_name")
+        if kd_teacher_name < 0:
+            kd_teacher_name = None
+            
         num_epoch = int(cfg.get("num_epoch"))
         learning_rate = float(cfg.get("learning_rate"))
         weight_decay = float(cfg.get("weight_decay"))
