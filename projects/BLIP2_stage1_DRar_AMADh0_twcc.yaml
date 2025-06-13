@@ -20,14 +20,14 @@ model:
 
 dataset:
   meta_path: "/work/misaka13/R27_MVLM/dataset/cleanPathVQAset_meta_2506060316.json"
-  data_path: "/work/misaka13/cleanPCset_v2/breast"
+  data_path: "/work/misaka13/cleanPCset_v2/padded_breast"
   croped_data_key: "padded_cleaned_image_path"
   
   multi_res_method: 'RatioPadInterp' # 'SimpleResize', 'RatioPadInterp', 'PatchPadBucket'
   
-  image_size: 448
+  image_size: 224
   size_ratio: 2
-  new_img_height: 448
+  new_img_height: 224
   pad_value: 1
   bucket_size_multiplier: 50
   
