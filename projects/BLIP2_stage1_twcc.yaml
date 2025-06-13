@@ -43,7 +43,7 @@ task:
   save_freq: 2
   
 env:
-  root_path: "/work/misaka13/R27_MVLM"
+  root_path: "/work/misaka13/R27_MVLM_v2"
   
   world_size: 1
   distributed: True
