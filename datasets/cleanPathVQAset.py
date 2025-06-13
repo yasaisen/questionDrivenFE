@@ -88,10 +88,13 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         split: str,
         img_processor,
         txt_processor,
-        testing: int = None,
     ):
         meta_path = str(cfg.get("meta_path"))
         data_path = str(cfg.get("data_path"))
+
+        testing = cfg.get("test_data_num")
+        if testing < 0:
+            testing = None
 
         dataset = cls(
             meta_path=meta_path, 
@@ -110,12 +113,14 @@ class cleanPathVQAset(Dataset): # (sample_idx-image-prior-query-answer-split)
         split: str,
         img_processor,
         txt_processor,
-        testing: int = None,
     ):
         meta_path = str(cfg.get("meta_path"))
         data_path = str(cfg.get("data_path"))
 
         image_size = int(cfg.get("image_size"))
+        testing = cfg.get("test_data_num")
+        if testing < 0:
+            testing = None
 
         batch_size = int(cfg.get("batch_size"))
         bucket_size_multiplier = int(cfg.get("bucket_size_multiplier", 50))
