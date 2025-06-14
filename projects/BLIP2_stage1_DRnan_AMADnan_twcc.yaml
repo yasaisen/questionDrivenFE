@@ -34,7 +34,7 @@ dataset:
   test_data_num: 
     train: 12288
     valid: 512
-  batch_size: 16
+  batch_size: 12
   num_workers: 4
   pin_memory: True
 
