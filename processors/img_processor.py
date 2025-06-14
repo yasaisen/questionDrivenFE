@@ -17,6 +17,8 @@ import torch.nn.functional as F
 from typing import Dict
 import torch
 
+from ..common.utils import log_print, get_trainable_params, highlight, highlight_show
+
 
 class ImgProcessor():
     def __init__(self, 
@@ -47,63 +49,6 @@ class ImgProcessor():
         self.pre_transform = transforms.Compose([
             transforms.ToTensor(),
         ])
-        
-    @staticmethod
-    def macenko_normalization(
-        I: np.ndarray, 
-        Io: int = 240, 
-        alpha: int = 1, 
-        beta: float = 0.15, 
-        target_max=None
-    ):
-        I = I.astype(np.float32)
-        OD = -np.log((I + 1) / Io)
-        
-        mask = (I < Io).all(axis=2)
-        OD_hat = OD[mask].reshape(-1, 3)
-        OD_hat = OD_hat[np.max(OD_hat, axis=1) > beta]
-        
-        if OD_hat.shape[0] == 0:
-            return I.astype(np.uint8)
-        
-        U, S, V = np.linalg.svd(OD_hat, full_matrices=False)
-        V = V[:2, :].T
-        
-        That = np.dot(OD_hat, V)
-        phi = np.arctan2(That[:, 1], That[:, 0])
-        
-        minPhi = np.percentile(phi, alpha)
-        maxPhi = np.percentile(phi, 100 - alpha)
-        
-        v1 = np.dot(V, np.array([np.cos(minPhi), np.sin(minPhi)]))
-        v2 = np.dot(V, np.array([np.cos(maxPhi), np.sin(maxPhi)]))
-        
-        stain_matrix = np.array([v1, v2]).T
-        stain_matrix /= np.linalg.norm(stain_matrix, axis=0)
-        
-        OD_flat = OD.reshape((-1, 3)).T
-        concentrations, _, _, _ = np.linalg.lstsq(stain_matrix, OD_flat, rcond=None)
-        
-        maxC = np.percentile(concentrations, 99, axis=1)
-        if target_max is None:
-            target_max = maxC.copy()
-        
-        epsilon = 1e-6
-        
-        if np.any(np.abs(maxC) < epsilon) or np.any(~np.isfinite(maxC)):
-            norm_concentrations = concentrations.copy()
-        else:
-            norm_concentrations = concentrations * (target_max[:, None] / maxC[:, None])
-        
-        OD_normalized = np.dot(stain_matrix, norm_concentrations)
-        
-        I_normalized = Io * np.exp(-OD_normalized)
-        I_normalized = I_normalized.T.reshape(I.shape)
-        
-        I_normalized = np.nan_to_num(I_normalized, nan=0.0, posinf=255.0, neginf=0.0)
-        I_normalized = np.clip(I_normalized, 0, 255).astype(np.uint8)
-        
-        return I_normalized
     
     def __call__(self, 
         image
@@ -134,7 +79,19 @@ class ImgProcessor():
     def testing(self, 
         image
     ):
-        aug_image = self.macenko_normalization(image)
+        if self.center_pad_dict is not None:
+            aug_image = macenko_normalization(image)
+        else:
+            aug_image = macenko_normalization_manyWhite(image)
+
+            if np.array_equal(aug_image, image):
+                log_print("[Warning] Skipped Macenko regularization")
+                aug_image = statistical_normalization(
+                    image, 
+                    target_mean=128, 
+                    target_std=40
+                )
+
         aug_image = transforms.ToPILImage()(aug_image)
         aug_image = self.pre_transform(aug_image)
 
@@ -181,6 +138,193 @@ class ImgProcessor():
         )
 
         return processor
+
+def statistical_normalization(image, target_mean=128, target_std=50, mask=None):
+    image = image.astype(np.float32)
+    
+    if mask is None:
+        mask = (image < 220).all(axis=2)
+    
+    normalized = image.copy()
+    
+    for i in range(3):
+        channel = image[:, :, i]
+        if np.sum(mask) > 0:
+            valid_pixels = channel[mask]
+            if len(valid_pixels) > 0 and np.std(valid_pixels) > 0:
+                current_mean = np.mean(valid_pixels)
+                current_std = np.std(valid_pixels)
+                
+                normalized_channel = (channel - current_mean) / current_std
+                normalized_channel = normalized_channel * target_std + target_mean
+                
+                normalized[:, :, i] = channel.copy()
+                normalized[mask, i] = normalized_channel[mask]
+            else:
+                normalized[:, :, i] = channel
+        else:
+            normalized[:, :, i] = channel
+    
+    return np.clip(normalized, 0, 255).astype(np.uint8)
+
+def macenko_normalization_manyWhite(
+    I: np.ndarray, 
+    Io: int = 240, 
+    alpha: int = 1, 
+    beta: float = 0.15, 
+    target_max=None,
+    white_threshold: int = 220
+):
+    I = I.astype(np.float32)
+    
+    non_white_mask = (I < white_threshold).all(axis=2)
+    tissue_mask = (I < Io).all(axis=2)
+    
+    valid_mask = non_white_mask & tissue_mask
+    
+    valid_pixel_count = np.sum(valid_mask)
+    total_pixels = I.shape[0] * I.shape[1]
+    valid_ratio = valid_pixel_count / total_pixels
+    
+    if valid_ratio < 0.01:
+        # print("警告：有效像素太少，跳過 Macenko 正規化")
+        return I.astype(np.uint8)
+    
+    OD = -np.log((I + 1) / Io)
+    OD_hat = OD[valid_mask].reshape(-1, 3)
+    
+    OD_hat = OD_hat[np.max(OD_hat, axis=1) > beta]
+    
+    if OD_hat.shape[0] < 10:
+        # print("警告：有效光密度點太少，跳過 Macenko 正規化")
+        return I.astype(np.uint8)
+    
+    try:
+        U, S, V = np.linalg.svd(OD_hat, full_matrices=False)
+        
+        if len(S) < 2 or S[1] < 1e-6:
+            # print("警告：SVD 結果不穩定，跳過 Macenko 正規化")
+            return I.astype(np.uint8)
+            
+        V = V[:2, :].T
+        
+    except np.linalg.LinAlgError:
+        # print("警告：SVD 分解失敗，跳過 Macenko 正規化")
+        return I.astype(np.uint8)
+    
+    That = np.dot(OD_hat, V)
+    
+    if That.shape[1] < 2:
+        # print("警告：投影結果維度不足，跳過 Macenko 正規化")
+        return I.astype(np.uint8)
+    
+    phi = np.arctan2(That[:, 1], That[:, 0])
+    
+    minPhi = np.percentile(phi, alpha)
+    maxPhi = np.percentile(phi, 100 - alpha)
+    
+    v1 = np.dot(V, np.array([np.cos(minPhi), np.sin(minPhi)]))
+    v2 = np.dot(V, np.array([np.cos(maxPhi), np.sin(maxPhi)]))
+    
+    stain_matrix = np.array([v1, v2]).T
+    
+    if np.any(np.linalg.norm(stain_matrix, axis=0) < 1e-6):
+        # print("警告：染色矩陣退化，跳過 Macenko 正規化")
+        return I.astype(np.uint8)
+    
+    stain_matrix /= np.linalg.norm(stain_matrix, axis=0)
+    
+    OD_flat = OD.reshape((-1, 3)).T
+    try:
+        concentrations, _, _, _ = np.linalg.lstsq(stain_matrix, OD_flat, rcond=None)
+    except np.linalg.LinAlgError:
+        # print("警告：濃度計算失敗，跳過 Macenko 正規化")
+        return I.astype(np.uint8)
+    
+    valid_concentrations = concentrations[:, valid_mask.flatten()]
+    if valid_concentrations.shape[1] > 0:
+        maxC = np.percentile(valid_concentrations, 99, axis=1)
+    else:
+        maxC = np.percentile(concentrations, 99, axis=1)
+    
+    if target_max is None:
+        target_max = maxC.copy()
+    
+    epsilon = 1e-6
+    
+    if np.any(np.abs(maxC) < epsilon) or np.any(~np.isfinite(maxC)):
+        norm_concentrations = concentrations.copy()
+    else:
+        norm_concentrations = concentrations * (target_max[:, None] / maxC[:, None])
+    
+    OD_normalized = np.dot(stain_matrix, norm_concentrations)
+    I_normalized = Io * np.exp(-OD_normalized)
+    I_normalized = I_normalized.T.reshape(I.shape)
+    
+    result = I_normalized.copy()
+    white_pixels = ~valid_mask
+    result[white_pixels] = I[white_pixels]
+    
+    result = np.nan_to_num(result, nan=0.0, posinf=255.0, neginf=0.0)
+    result = np.clip(result, 0, 255).astype(np.uint8)
+    
+    return result
+
+def macenko_normalization(
+    I: np.ndarray, 
+    Io: int = 240, 
+    alpha: int = 1, 
+    beta: float = 0.15, 
+    target_max=None
+):
+    I = I.astype(np.float32)
+    OD = -np.log((I + 1) / Io)
+    
+    mask = (I < Io).all(axis=2)
+    OD_hat = OD[mask].reshape(-1, 3)
+    OD_hat = OD_hat[np.max(OD_hat, axis=1) > beta]
+    
+    if OD_hat.shape[0] == 0:
+        return I.astype(np.uint8)
+    
+    U, S, V = np.linalg.svd(OD_hat, full_matrices=False)
+    V = V[:2, :].T
+    
+    That = np.dot(OD_hat, V)
+    phi = np.arctan2(That[:, 1], That[:, 0])
+    
+    minPhi = np.percentile(phi, alpha)
+    maxPhi = np.percentile(phi, 100 - alpha)
+    
+    v1 = np.dot(V, np.array([np.cos(minPhi), np.sin(minPhi)]))
+    v2 = np.dot(V, np.array([np.cos(maxPhi), np.sin(maxPhi)]))
+    
+    stain_matrix = np.array([v1, v2]).T
+    stain_matrix /= np.linalg.norm(stain_matrix, axis=0)
+    
+    OD_flat = OD.reshape((-1, 3)).T
+    concentrations, _, _, _ = np.linalg.lstsq(stain_matrix, OD_flat, rcond=None)
+    
+    maxC = np.percentile(concentrations, 99, axis=1)
+    if target_max is None:
+        target_max = maxC.copy()
+    
+    epsilon = 1e-6
+    
+    if np.any(np.abs(maxC) < epsilon) or np.any(~np.isfinite(maxC)):
+        norm_concentrations = concentrations.copy()
+    else:
+        norm_concentrations = concentrations * (target_max[:, None] / maxC[:, None])
+    
+    OD_normalized = np.dot(stain_matrix, norm_concentrations)
+    
+    I_normalized = Io * np.exp(-OD_normalized)
+    I_normalized = I_normalized.T.reshape(I.shape)
+    
+    I_normalized = np.nan_to_num(I_normalized, nan=0.0, posinf=255.0, neginf=0.0)
+    I_normalized = np.clip(I_normalized, 0, 255).astype(np.uint8)
+    
+    return I_normalized
 
 def center_padding(
     image: torch.Tensor, 
