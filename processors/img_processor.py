@@ -53,8 +53,19 @@ class ImgProcessor():
     def __call__(self, 
         image
     ):
-        aug_image = self.aug_pipeline(image=image)['image']
-        aug_image = self.macenko_normalization(aug_image)
+        image = self.aug_pipeline(image=image)['image']
+        if self.center_pad_dict is not None:
+            aug_image = macenko_normalization(image)
+        else:
+            aug_image = macenko_normalization_manyWhite(image)
+
+            if np.array_equal(aug_image, image):
+                log_print("[Warning] Skipped Macenko regularization")
+                aug_image = statistical_normalization(
+                    image, 
+                    target_mean=128, 
+                    target_std=40
+                )
         aug_image = transforms.ToPILImage()(aug_image)
         aug_image = self.pre_transform(aug_image)
 
