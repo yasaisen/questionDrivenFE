@@ -166,12 +166,11 @@ class ImgProcessor():
             center_pad_dict = None
         elif multi_res_method == 'RatioPadInterp':
             image_size = None
-            # center_pad_dict = {
-            #     'size_ratio': cfg.get("size_ratio"), 
-            #     'new_img_height': cfg.get("new_img_height"), 
-            #     'pad_value': cfg.get("pad_value"), 
-            # }
-            center_pad_dict = None
+            center_pad_dict = {
+                'size_ratio': cfg.get("size_ratio"), 
+                'new_img_height': cfg.get("new_img_height"), 
+                'pad_value': cfg.get("pad_value"), 
+            }
         elif multi_res_method == 'PatchPadBucket':
             image_size = None
             center_pad_dict = None
@@ -189,34 +188,34 @@ def center_padding(
     new_img_height: int = None, 
     pad_value: float = 1.0,
 ):
-    _, old_height, old_width = image.shape
+    # _, old_height, old_width = image.shape
     
-    new_height = int(old_height)
-    new_width = int(new_height * size_ratio)
+    # new_height = int(old_height)
+    # new_width = int(new_height * size_ratio)
 
-    pad_h = new_height - old_height
-    pad_w = new_width - old_width
+    # pad_h = new_height - old_height
+    # pad_w = new_width - old_width
 
-    pad_top    = pad_h // 2
-    pad_bottom = pad_h - pad_top
-    pad_left   = pad_w // 2
-    pad_right  = pad_w - pad_left
+    # pad_top    = pad_h // 2
+    # pad_bottom = pad_h - pad_top
+    # pad_left   = pad_w // 2
+    # pad_right  = pad_w - pad_left
 
-    image_padded = F.pad(
-        image, 
-        (pad_left, pad_top, pad_right, pad_bottom),
-        value=pad_value
-    )
+    # image = F.pad(
+    #     image, 
+    #     (pad_left, pad_top, pad_right, pad_bottom),
+    #     value=pad_value
+    # )
 
     if new_img_height is not None:
-        image_padded = F.interpolate(
-            image_padded.unsqueeze(0), 
+        image = F.interpolate(
+            image.unsqueeze(0), 
             size=(new_img_height, int(new_img_height * size_ratio)), 
             mode='bilinear', 
             align_corners=False
         ).squeeze(0)
 
-    return image_padded
+    return image
 
 
 

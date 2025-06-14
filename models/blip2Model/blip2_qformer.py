@@ -206,13 +206,14 @@ class Blip2Qformer(Blip2Base):
                 + F.cross_entropy(sim_t2i, targets, label_smoothing=0.1)
             ) / 2
 
-
+        _sim_i2t = sim_i2t.detach().clone()
+        _sim_t2i = sim_t2i.detach().clone()
         with torch.no_grad():
             # image→text
-            preds_i2t = sim_i2t.argmax(dim=1)
+            preds_i2t = _sim_i2t.argmax(dim=1)
             r1_i2t = (preds_i2t == targets).float().mean()
             # text→image
-            preds_t2i = sim_t2i.argmax(dim=1)
+            preds_t2i = _sim_t2i.argmax(dim=1)
             r1_t2i = (preds_t2i == targets).float().mean()
 
         ###============== Image-text Matching ===================###
