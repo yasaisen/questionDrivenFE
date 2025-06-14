@@ -229,8 +229,40 @@ class Blip2Qformer(Blip2Base):
                 sim_t2i[:, rank * bs : rank * bs + bs].fill_diagonal_(-10000)
                 sim_i2t[:, rank * bs : rank * bs + bs].fill_diagonal_(-10000)            
                 
+
+
+            sim_t2i = torch.clamp(sim_t2i, min=-50, max=50)
+            sim_i2t = torch.clamp(sim_i2t, min=-50, max=50)
+
+
+
             weights_t2i = F.softmax(sim_t2i, dim=1)
             weights_i2t = F.softmax(sim_i2t, dim=1)
+
+
+
+            weights_t2i = torch.nan_to_num(weights_t2i, nan=0.0, posinf=0.0, neginf=0.0)
+            weights_i2t = torch.nan_to_num(weights_i2t, nan=0.0, posinf=0.0, neginf=0.0)
+
+            weights_t2i = torch.clamp(weights_t2i, min=0.0)
+            weights_i2t = torch.clamp(weights_i2t, min=0.0)
+
+            wt2i_sum = weights_t2i.sum(dim=1, keepdim=True)
+            wi2t_sum = weights_i2t.sum(dim=1, keepdim=True)
+
+            eps = 1e-8
+            weights_t2i = torch.where(
+                wt2i_sum > eps,
+                weights_t2i / wt2i_sum,
+                torch.full_like(weights_t2i, 1.0 / weights_t2i.size(1))
+            )
+            weights_i2t = torch.where(
+                wi2t_sum > eps,
+                weights_i2t / wi2t_sum,
+                torch.full_like(weights_i2t, 1.0 / weights_i2t.size(1))
+            )
+
+
 
         # select a negative image for each text
         image_embeds_neg = []
