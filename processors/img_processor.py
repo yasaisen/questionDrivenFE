@@ -54,7 +54,7 @@ class ImgProcessor():
         image
     ):
         image = self.aug_pipeline(image=image)['image']
-        if self.center_pad_dict is not None:
+        if self.center_pad_dict is None:
             aug_image = macenko_normalization(image)
         else:
             aug_image = macenko_normalization_manyWhite(image)
@@ -90,7 +90,7 @@ class ImgProcessor():
     def testing(self, 
         image
     ):
-        if self.center_pad_dict is not None:
+        if self.center_pad_dict is None:
             aug_image = macenko_normalization(image)
         else:
             aug_image = macenko_normalization_manyWhite(image)
